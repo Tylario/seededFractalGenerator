@@ -1,0 +1,359 @@
+<html>
+    <head>
+        <title>
+            Dragon Curve Fractal
+        </title>
+    </head>
+    <style>
+        body{
+            overflow: hidden;
+        }
+
+        #interface{
+            position:absolute;
+            left:20px;
+            top:20px;
+        }
+
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+    </style>
+    <body>
+        <div id="interface">
+            <input type="button" value="next step" id="nextStep" onclick="process()"><br><input type="button" value="reset" onclick="reset()"><br><br>
+            Seed<small>(14 numbers)</small>: <input type="number" id="seed" value="11111111111111"onkeyup="reset()" style="width:120px;"> <button onclick="randomizeSeed()" style="border-radius:50%; width:20px; height:20px; text-align: center; font-size: 10;">?</button>
+
+        </div>
+    <body>
+    <script>
+        let content = [
+            [false, false, false, false],
+            [false, true, true, false],
+            [false, true, true, false],
+            [false, false, false, false]
+        ]
+
+        let size;
+
+        let toDo = "left";
+        let toDoPossibilities = ["up", "down", "left", "right"];
+
+        let tick = 2;
+
+        var canvas;
+        var ctx;
+
+        var timePerSize = 0;
+
+        Math.seededRandom = function(max, min) {
+            max = max || 1;
+            min = min || 0;
+ 
+            Math.seed = (Math.seed * 9301 + 49297) % 233280;
+            var rnd = Math.seed / 233280;
+ 
+            return min + rnd * (max - min);
+        }
+
+
+        function init(){
+            var canvas = document.createElement('canvas');
+            canvas.id = "myCanvas";
+            size = Math.min(window.innerHeight - 20, window.innerWidth - 20)
+            canvas.width = size;
+            canvas.height = size;
+            canvas.style.left = "50%";
+            canvas.style.marginLeft = size/2;
+            var body = document.getElementsByTagName("body")[0];
+            body.appendChild(canvas);
+            ctx = canvas.getContext("2d"); 
+            displayContent(); 
+
+        }
+
+        init()
+
+        function process(){
+            if(timePerSize == 0){
+                document.getElementById("nextStep").style.display = "block";
+            } else if(timePerSize * getSize() > 80){
+                document.getElementById("nextStep").style.display = "none";
+                return;
+            } else {
+                document.getElementById("nextStep").style.display = "block";
+            }
+            if(document.getElementById("seed").value != "11111111111111"){
+                Math.seed = Number(document.getElementById("seed").value);
+                tick++
+                if(tick > 10){
+                    tick = 2;
+                }
+                toDo = toDoPossibilities[parseInt(Math.seededRandom(0, 10).toString().charAt(tick)) % 4];
+            }
+
+            let t0  = performance.now();
+
+            padContent();
+            moveContent();
+            trimEdges();
+            padContent();
+            displayContent();
+            quadrupleContent();
+
+            let t1 = performance.now();
+            let time = t1 - t0; // in milliseconds
+            let size = getSize();
+            timePerSize = time/size;
+
+        }
+
+        process();
+
+        function getSize(){
+            return(content.length * content[0].length);
+        }
+
+        function quadrupleContent(){
+            let newArr = [];
+            for(let i = 0; i < content.length * 2; i++){//initialize new empty array is twice is long & tall (4 times the "volume")
+                newArr.push([]);
+                for(let j = 0; j < content.length * 2; j++){
+                    newArr[i].push(false);
+                }   
+            }   
+
+            for(let i = 0; i < content.length; i++){//sets new arr indexes equal to the according content array
+                for(let j = 0; j < content.length; j++){
+                    newArr[i * 2][j * 2] = content[i][j];
+                    newArr[i * 2 + 1][j * 2 + 1] = content[i][j]
+                    newArr[i * 2][j * 2 + 1] = content[i][j]
+                    newArr[i * 2 + 1][j * 2] = content[i][j]
+                }   
+            }
+            content = newArr;
+        }
+
+        function padContent(){
+          
+            let newArr = [];
+
+            for(let i = 0; i < content.length + 2; i++){//initialize new empty array thats width and length is 2 larger
+                newArr.push([]);
+                for(let j = 0; j < content.length + 2; j++){
+                    newArr[i].push(false);
+                }   
+            }           
+
+            for(let i = 0; i < content.length; i++){//copy old array onto new array displaced by 1 top the right and 1 down
+                for(let j = 0; j < content.length; j++){
+                    newArr[i+1][j+1] = content[i][j]
+                }   
+            } 
+
+            content = newArr;
+        }
+
+        function moveContent(){
+            //todo
+            //toggle the toDo variable and split the content array accordingly
+            newContent = [];
+            for(let i = 0; i < content.length; i++){
+                newContent.push([]);
+                for(let j = 0; j < content[0].length; j++){
+                    newContent[i].push(content[i][j]);
+                }
+            }
+  
+            if(toDo == "up"){//always refer to even
+                for(let i = 1; i < content.length - 1; i++){
+                    for(let j = 1; j < content.length - 1; j++){
+                        if(j % 2 == 0){
+                            content[i][j] = newContent[i + 1][j]
+                        }
+                    }   
+                } 
+                toDo = "right";
+            } else if(toDo == "right"){//always refer to even
+                for(let i = 1; i < content.length - 1; i++){
+                    for(let j = 1; j < content.length - 1; j++){
+                        if(i % 2 == 0){
+                            content[i][j] = newContent[i][j - 1]
+                        }
+                    }   
+                } 
+                toDo = "down";
+            } else if(toDo == "down"){//always refer to even
+                for(let i = 1; i < content.length - 1; i++){
+                    for(let j = 1; j < content.length - 1; j++){
+                        if(j % 2 == 0){
+                            content[i][j] = newContent[i - 1][j]
+                        }
+                    }   
+                }
+                toDo = "left";
+            } else if(toDo == "left"){//always refer to even
+                for(let i = 1; i < content.length - 1; i++){
+                    for(let j = 1; j < content.length - 1; j++){
+                        if(i % 2 == 0){
+                            content[i][j] = newContent[i][j + 1]
+                        }
+                    }   
+                } 
+                toDo = "up";
+            }
+        }
+
+        function trimEdges(){
+            while(trimTopAndLeft()){
+
+            };
+            while(trimBottomAndRight()){
+
+            };
+        }
+
+        function trimTopAndLeft(){
+            for(let i = 0; i < content.length; i++){
+                if(content[i][0]){
+                    return(false);
+                }
+            }
+            for(let i = 0; i < content.length; i++){
+                if(content[0][i]){
+                    return(false);
+                }
+            }
+            let newArr = [];
+
+            for(let i = 0; i < content.length - 1; i++){//initialize new empty array thats width and length is 2 larger
+                newArr.push([]);
+                for(let j = 0; j < content.length - 1; j++){
+                    newArr[i].push(false);
+                }   
+            }           
+
+            for(let i = 0; i < content.length - 1; i++){//copy old array onto new array displaced by 1 top the right and 1 down
+                for(let j = 0; j < content.length - 1; j++){
+                    newArr[i][j] = content[i + 1][j + 1]
+                }   
+            } 
+            content = newArr;
+            return(true);
+        }
+
+        function trimBottomAndRight(){
+            for(let i = 0; i < content.length; i++){
+                if(content[i][content.length - 1]){
+                    return(false);
+                }
+            }
+            for(let i = 0; i < content.length; i++){
+                if(content[0][content.length - 1]){
+                    return(false);
+                }
+            }
+            let newArr = [];
+
+            for(let i = 0; i < content.length - 1; i++){//initialize new empty array thats width and length is 2 larger
+                newArr.push([]);
+                for(let j = 0; j < content.length - 1; j++){
+                    newArr[i].push(false);
+                }   
+            }           
+
+            for(let i = 0; i < content.length - 1; i++){//copy old array onto new array displaced by 1 top the right and 1 down
+                for(let j = 0; j < content.length - 1; j++){
+                    newArr[i][j] = content[i][j]
+                }   
+            } 
+
+            content = newArr;
+            return(true);
+        }
+
+        function displayContent(){
+            clearCanvas()
+            for(let i = 0; i < content.length; i++){
+                for(let j = 0; j < content[0].length; j++){
+                    //i as x, j as y
+                    if(content[i][j]){
+                        let x = i * (size / content.length);
+                        let y = j * (size / content.length);
+                        let fillSize = size / content.length;
+                        
+                        ctx.fillRect(y,x, fillSize, fillSize);
+                    }
+                }
+            }
+        }
+
+        function clearCanvas(){
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0,0, size, size);
+            ctx.fillStyle = "#000000";
+        }
+
+        function reset(){
+            if(document.getElementById("seed").value == "11111111111111" || (document.getElementById("seed").value > 10000000000000 && document.getElementById("seed").value < 111111111111111) || (document.getElementById("seed").value < -10000000000000 && document.getElementById("seed").value > -100000000000000)){
+                document.getElementById("myCanvas").style.display = "block"
+                document.getElementById("seed").style="color:black; width:120px;";
+                if(document.getElementById("seed").value == "11111111111111"){
+                    content = [
+                        [false, false, false, false],
+                        [false, true, true, false],
+                        [false, true, true, false],
+                        [false, false, false, false]
+                    ]  
+                } else {
+                    Math.seed = Number(document.getElementById("seed").value);
+
+                    let startSeed = Math.max(Math.min(Math.seededRandom(0, 10) * 6500, 65536), 32768);
+
+                    let startSeedBinary = dec2bin(startSeed);
+
+                    content = [
+                        [false, false, false, false],
+                        [false, true, true, false],
+                        [false, true, true, false],
+                        [false, false, false, false]
+                    ] 
+                    let count = 0;
+                    for(let i = 0; i < 3; i++){
+                        for(let j = 0; j < 3; j++){
+                            if(startSeedBinary.charAt(count) == "1"){
+                                content[i][j] = true;
+                            } else {
+                                content[i][j] = false;
+                            }
+                        count = count + 1;
+                        }
+               
+                    }
+                }
+            
+            } else {
+                document.getElementById("seed").style="color:red; width:120px;";
+                document.getElementById("myCanvas").style.display = "none";
+                return;
+            }
+            tick = 2;
+            toDo = "left";
+            process()
+            
+       }
+
+        function dec2bin(dec) {
+            return (dec >>> 0).toString(2);
+        }
+
+        function randomizeSeed(){
+            document.getElementById("seed").value = Math.floor(Math.random() * 90000000000000 + 10000000000000);
+            reset();
+        }
+
+
+    </script>
+</html>
